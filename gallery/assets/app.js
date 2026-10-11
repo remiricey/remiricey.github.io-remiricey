@@ -14,14 +14,14 @@
   /* ---------------- 配置 ---------------- */
   var CATS_PATH    = 'data/gallery.json';   // 由 build_data.py 生成
   var THUMB_DIR    = 'thumbs/';             // 由 build_thumbs.py 生成
-  var ORIGINALS_DIR = 'originals/';     // 原图目录（相对 index.html，纯相对路径）
+  var ORIGINALS_DIR = 'originals-web/';     // 原图目录（相对 index.html，纯相对路径）
   /* 灯箱原图的扩展名覆盖。
      留空 '' = 沿用原图自身扩展名（originals/ 目录用这个）。
      改用 build_web_originals.py 生成的精简目录时，把它设为 '.webp'：
          var ORIGINALS_DIR  = 'originals-web/';
          var ORIGINALS_EXT  = '.webp';
      或者直接用 node gallery/switch_originals.mjs 一键切换。 */
-  var ORIGINALS_EXT = '';
+  var ORIGINALS_EXT = '.webp';
   var IMG_MAX_H    = 400;                   // 与 CSS --img-max-h 保持一致
   var GAP          = 16;                    // 与 CSS --gap 保持一致
   var BATCH        = 40;                    // 每轮追加的图片数量
