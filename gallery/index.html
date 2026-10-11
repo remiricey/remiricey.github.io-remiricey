@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#0a070b">
+<title>芙兰朵露 · 绯月画廊 | Flandre Scarlet Gallery</title>
+<meta name="description" content="个人向芙兰朵露图集 · 暗黑哥特风瀑布流画廊">
+<!-- 内联 SVG 图标：不产生额外文件，也不会有 favicon.ico 404 -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a070b'/%3E%3Cpath d='M16 5l3.2 7.8L27 16l-7.8 3.2L16 27l-3.2-7.8L5 16l7.8-3.2z' fill='%238b1a2b'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+
+<!-- 顶部细小绯色进度线 -->
+<div class="scroll-progress" id="progress" aria-hidden="true"></div>
+
+<header class="site-head">
+  <div class="head-inner">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">✦</span>
+      <h1 class="brand-title">绯月画廊<em>Scarlet Moon Gallery</em></h1>
+    </div>
+
+    <nav class="tabs" id="tabs" role="tablist" aria-label="图集分类"></nav>
+
+    <div class="head-meta">
+      <span class="meta-count" id="metaCount">— 张</span>
+      <button class="meta-btn" id="reshuffle" type="button" title="重新随机排列当前分类">
+        <span aria-hidden="true">⟳</span> 打乱
+      </button>
+      <button class="meta-btn danger" id="toggleNsfw" type="button" hidden
+              title="显示 / 隐藏敏感的 NSFW 分类">
+        <span aria-hidden="true">◉</span> <span id="nsfwLabel">显示 NSFW</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main class="stage">
+  <div class="masonry" id="masonry"></div>
+
+  <!-- 顶部加载失败提示 -->
+  <div class="fatal" id="fatal" hidden>
+    <h2>无法载入图集数据</h2>
+    <p>请确认本页面是通过本地 HTTP 服务器打开的（例如 <code>python -m http.server</code>），
+       而不是直接双击 HTML 文件。直接以 <code>file://</code> 方式打开时，
+       浏览器会因安全策略拒绝读取 <code>data/gallery.json</code>。</p>
+  </div>
+
+  <!-- 无限滚动哨兵：进入视野即追加下一轮随机图片 -->
+  <div class="sentinel" id="sentinel" aria-hidden="true">
+    <span class="sentinel-spin"></span>
+    <span class="sentinel-text">正在洗牌下一轮 …</span>
+  </div>
+</main>
+
+<footer class="site-foot" id="siteFoot">
+  <div class="foot-rule" aria-hidden="true"><span>❦</span></div>
+
+  <section class="about" aria-labelledby="aboutTitle">
+    <h2 class="about-title" id="aboutTitle">关于 · 导言</h2>
+
+    <p class="about-text">
+      本网站为个人制作网站，如需搬运使用商业合作，请联系个人，<a class="sns sns-bili" href="https://b23.tv/lU4FqHJ" target="_blank" rel="noopener noreferrer"><span class="sns-ico" aria-hidden="true">♥</span>@B站&nbsp;蕾米粒呀</a>，
+      <a class="sns sns-dy" href="https://v.douyin.com/ddOjaJSAevY/" target="_blank" rel="noopener noreferrer"><span class="sns-ico" aria-hidden="true">♥</span>@抖音&nbsp;蕾米粒呀</a>
+      ，<a class="sns sns-xhs" href="https://xhslink.cn/o/AeTITc7bLXU" target="_blank" rel="noopener noreferrer"><span class="sns-ico" aria-hidden="true">♥</span>@小红书&nbsp;蕾米粒呀</a>
+    </p>
+
+    <p class="about-note">
+      全部图片均为个人收藏与整理，仅作本地欣赏之用；角色版权归原作者所有，请勿用于任何商业用途。
+    </p>
+  </section>
+
+  <p class="foot-sig">© <span id="year">2025</span> 绯月画廊 · Scarlet Moon Gallery —— 于绯红月色下，与芙兰同在。</p>
+</footer>
+
+<!-- ============ 灯箱 ============ -->
+<div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="大图浏览" hidden>
+  <div class="lb-backdrop" id="lbBackdrop"></div>
+
+  <button class="lb-btn lb-close" id="lbClose" type="button" aria-label="关闭（Esc）">✕</button>
+  <button class="lb-btn lb-prev" id="lbPrev" type="button" aria-label="上一张（←）">‹</button>
+  <button class="lb-btn lb-next" id="lbNext" type="button" aria-label="下一张（→）">›</button>
+
+  <figure class="lb-stage" id="lbStage">
+    <div class="lb-spinner" id="lbSpinner" aria-hidden="true"></div>
+    <img class="lb-img" id="lbImg" alt="">
+    <figcaption class="lb-cap">
+      <span class="lb-idx" id="lbIdx">—</span>
+      <span class="lb-sep" aria-hidden="true">·</span>
+      <span class="lb-name" id="lbName"></span>
+      <span class="lb-sep" aria-hidden="true">·</span>
+      <span class="lb-size" id="lbSize"></span>
+      <a class="lb-orig" id="lbOrig" href="#" target="_blank" rel="noopener noreferrer" title="在新标签页打开原图">原图 ↗</a>
+    </figcaption>
+  </figure>
+</div>
+
+<script src="assets/app.js"></script>
+</body>
+</html>

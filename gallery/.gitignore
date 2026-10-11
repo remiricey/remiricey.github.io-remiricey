@@ -1,0 +1,10 @@
+# 原图目录：体积过大（约 2.5 GB），不适合上传到 GitHub
+# 网页浏览只需要 thumbs/（缩略图）与 originals-web/（网页优化版原图）
+originals/
+
+# 系统与编辑器产生的临时文件
+Thumbs.db
+desktop.ini
+.DS_Store
+__pycache__/
+*.pyc
