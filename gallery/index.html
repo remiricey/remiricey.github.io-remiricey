@@ -4,41 +4,140 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <meta name="color-scheme" content="dark">
-<meta name="theme-color" content="#0a070b">
-<title>芙兰朵露 · 绯月画廊 | Flandre Scarlet Gallery</title>
-<meta name="description" content="个人向芙兰朵露图集 · 暗黑哥特风瀑布流画廊">
+<meta name="theme-color" content="#09070B">
+<title>绯月画廊 · SCARLET MOON GALLERY</title>
+<meta name="description" content="芙兰朵露主题个人插画收藏馆 · Lunatic Gothic × Dark Fantasy · 绯红月色下的私人画廊">
 <!-- 内联 SVG 图标：不产生额外文件，也不会有 favicon.ico 404 -->
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%230a070b'/%3E%3Cpath d='M16 5l3.2 7.8L27 16l-7.8 3.2L16 27l-3.2-7.8L5 16l7.8-3.2z' fill='%238b1a2b'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%2309070B'/%3E%3Cpath d='M16 5l3.2 7.8L27 16l-7.8 3.2L16 27l-3.2-7.8L5 16l7.8-3.2z' fill='%23A61932'/%3E%3C/svg%3E">
+<!-- 标题子集字体预载（1.8KB，仅 4 个字形）：跨域模式下字体请求需要 crossorigin -->
+<link rel="preload" href="assets/fonts/scarlet-title.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="assets/style.css">
 </head>
 <body>
 
+<!-- 环境层：封存（冷黑灰紫）⇄ 解封（黑樱桃红），环境会变，作品不变 -->
+<div class="env" aria-hidden="true">
+  <div class="env-layer env-cold"></div>
+  <div class="env-layer env-warm"></div>
+  <div class="env-layer env-light"></div>
+  <div class="env-layer env-reso"><div class="env-reso-inner"></div></div>
+</div>
+
+<!-- 入口：THE DOOR HAS OPENED（0.5s 黑屏后浮现，随后画廊苏醒） -->
+<div class="door" id="door" aria-hidden="true">
+  <div class="door-inner">
+    <span class="door-line" aria-hidden="true"></span>
+    <p class="door-text">THE DOOR HAS OPENED</p>
+    <p class="door-sub">WELCOME TO MY LITTLE NIGHTMARE</p>
+  </div>
+</div>
+
 <!-- 顶部细小绯色进度线 -->
 <div class="scroll-progress" id="progress" aria-hidden="true"></div>
 
+<!-- ============ Hero · 绯月圣域 ============ -->
 <header class="site-head">
-  <div class="head-inner">
-    <div class="brand">
-      <span class="brand-mark" aria-hidden="true">✦</span>
-      <h1 class="brand-title">绯月画廊<em>Scarlet Moon Gallery</em></h1>
+  <div class="hero">
+    <div class="hero-main">
+      <div class="hero-side">
+        <!-- 月蚀：手绘 SVG，冷银月 ⇄ 绯红月双态，外圈微弱辉光 -->
+        <div class="eclipse" id="eclipse" aria-hidden="true">
+          <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <radialGradient id="eclGlow" cx="50%" cy="50%" r="50%">
+                <stop offset="0%"  stop-color="#AFC3E0" stop-opacity=".22"/>
+                <stop offset="55%" stop-color="#8A9CBE" stop-opacity=".08"/>
+                <stop offset="100%" stop-color="#8A9CBE" stop-opacity="0"/>
+              </radialGradient>
+              <radialGradient id="eclGlowWarm" cx="50%" cy="50%" r="50%">
+                <stop offset="0%"  stop-color="#E3294F" stop-opacity=".30"/>
+                <stop offset="55%" stop-color="#A61932" stop-opacity=".10"/>
+                <stop offset="100%" stop-color="#A61932" stop-opacity="0"/>
+              </radialGradient>
+              <mask id="eclMask">
+                <circle cx="40" cy="40" r="17" fill="#fff"/>
+                <circle cx="46.5" cy="34.5" r="15.5" fill="#000"/>
+              </mask>
+            </defs>
+            <g class="moon-cold">
+              <circle cx="40" cy="40" r="36" fill="url(#eclGlow)"/>
+              <circle cx="40" cy="40" r="22" fill="none" stroke="#93A0B8" stroke-opacity=".35" stroke-width="1"/>
+              <circle cx="40" cy="40" r="17" fill="#DDE4EE" mask="url(#eclMask)"/>
+              <path d="M13.5 25 l1.9 1.9 -1.9 1.9 -1.9 -1.9 z" fill="#C9D4E6" opacity=".55"/>
+              <path d="M64 54 l1.4 1.4 -1.4 1.4 -1.4 -1.4 z" fill="#8A9CBE" opacity=".6"/>
+            </g>
+            <g class="moon-warm">
+              <circle cx="40" cy="40" r="36" fill="url(#eclGlowWarm)"/>
+              <circle cx="40" cy="40" r="22" fill="none" stroke="#D77E96" stroke-opacity=".4" stroke-width="1" stroke-dasharray="45 8 12 40"/>
+              <circle cx="40" cy="40" r="17" fill="#F2D9D5" mask="url(#eclMask)"/>
+              <path d="M46 12 l2.2 2.2 -2.2 2.2 -2.2 -2.2 z" fill="#E77795" opacity=".8"/>
+              <path d="M60 22 l1.6 1.6 -1.6 1.6 -1.6 -1.6 z" fill="#E77795" opacity=".6"/>
+            </g>
+          </svg>
+        </div>
+
+        <!-- 异常点：月亮旁漂浮的破碎水晶碎片（极淡绯红） -->
+        <div class="fragment-moon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <polygon points="3,19 7,12 11,18" fill="rgba(227,41,79,0.16)" stroke="#E3294F" stroke-opacity=".45" stroke-width="0.6"/>
+            <polygon points="9,6 11,2 13,7" fill="rgba(154,120,98,0.18)" stroke="#9A7862" stroke-opacity=".4" stroke-width="0.6"/>
+            <polygon points="16,14 20,12 19,17" fill="rgba(233,225,229,0.12)" stroke="#E9E1E5" stroke-opacity=".3" stroke-width="0.6"/>
+          </svg>
+        </div>
+      </div>
+
+      <div class="hero-text">
+        <p class="hero-kicker">GALLERY OF THE SCARLET MOON</p>
+        <h1 class="hero-title">绯 月 画 廊</h1>
+        <p class="hero-sub">— A Beautiful Lunacy —</p>
+        <!-- 主人改过它：划掉正式文案，手写补一笔 -->
+        <p class="hero-cn">「献给<del>永不终结</del><span class="scribble" aria-hidden="true">还没结束</span>的绯色狂想。」</p>
+      </div>
     </div>
 
-    <nav class="tabs" id="tabs" role="tablist" aria-label="图集分类"></nav>
+    <!-- 破碎分隔线：被晶体龙骨压住右端，断开错层 -->
+    <div class="hero-rule" aria-hidden="true"></div>
 
-    <div class="head-meta">
-      <span class="meta-count" id="metaCount">— 张</span>
-      <button class="meta-btn" id="reshuffle" type="button" title="重新随机排列当前分类">
-        <span aria-hidden="true">⟳</span> 打乱
-      </button>
-      <button class="meta-btn danger" id="toggleNsfw" type="button" hidden
-              title="显示 / 隐藏敏感的 NSFW 分类">
-        <span aria-hidden="true">◉</span> <span id="nsfwLabel">显示 NSFW</span>
-      </button>
+    <div class="hero-foot">
+      <p class="hero-meta">
+        <span class="meta-count" id="metaCount">— FRAGMENTS · SCARLET ARCHIVE</span>
+        <span class="owner-note" aria-hidden="true">数了三遍，没少。</span>
+      </p>
+      <div class="hero-actions">
+        <button class="find-btn" id="findBtn" type="button" disabled>◇ 找一件藏品</button>
+        <button class="fate-btn" id="reshuffle" type="button" title="Shall we play? · 重新随机排列当前分类">
+          <span class="fate-main" aria-hidden="true">⟡ SHUFFLE FATE</span>
+          <span class="fate-cn">打乱命运</span>
+        </button>
+        <div class="state-caption" id="nsfwCap" hidden>
+          <span class="state-word" id="stateWord">封存</span>
+          <span class="state-desc" id="stateDesc">它们暂时还很安静。</span>
+        </div>
+        <button class="nsfw-switch" id="toggleNsfw" type="button" hidden
+                title="显示 / 隐藏敏感的 NSFW 分类">
+          <span class="sw-track" aria-hidden="true"><span class="sw-knob"></span></span>
+          <span class="sw-label" id="nsfwLabel">NSFW 隐藏中</span>
+        </button>
+      </div>
     </div>
+
+    <!-- 命运洗牌的反馈行（翻牌演出期间说话） -->
+    <p class="fate-say" id="fateSay" role="status" aria-live="polite">顺序暂时还由你记得。</p>
   </div>
 </header>
 
+<!-- ============ 分类导航（粘性） ============ -->
+<nav class="nav-wrap">
+  <div class="tabs" id="tabs" role="tablist" aria-label="图集分类"></div>
+</nav>
+
 <main class="stage">
+  <!-- 已应用的筛选条件（chips 展示，抽屉关闭后保留） -->
+  <div class="filter-chips" id="filterChips" aria-label="已应用筛选" hidden></div>
+
+  <!-- 筛选结果为空 -->
+  <div class="empty-filter" id="emptyFilter" hidden>这组条件下，暂时没有藏品。打开分类调整或重置。</div>
+
   <div class="masonry" id="masonry"></div>
 
   <!-- 顶部加载失败提示 -->
@@ -74,6 +173,8 @@
   </section>
 
   <p class="foot-sig">© <span id="year">2025</span> 绯月画廊 · Scarlet Moon Gallery —— 于绯红月色下，与芙兰同在。</p>
+  <p class="state-phase" id="statePhase">空间已封存</p>
+  <p class="sr-only" id="stateLive" role="status" aria-live="polite" aria-atomic="true"></p>
 </footer>
 
 <!-- ============ 灯箱 ============ -->
@@ -85,8 +186,21 @@
   <button class="lb-btn lb-next" id="lbNext" type="button" aria-label="下一张（→）">›</button>
 
   <figure class="lb-stage" id="lbStage">
-    <div class="lb-spinner" id="lbSpinner" aria-hidden="true"></div>
-    <img class="lb-img" id="lbImg" alt="">
+    <div class="lb-view">
+      <div class="lb-spinner" id="lbSpinner" aria-hidden="true"></div>
+      <img class="lb-img" id="lbImg" alt="">
+      <!-- 收藏柜档案：FRAGMENT 编号 / 分类 / 日期 / 状态 -->
+      <aside class="lb-info">
+        <p class="lb-frag" id="lbFragment">FRAGMENT ----</p>
+        <dl class="lb-meta">
+          <div><dt>CATEGORY</dt><dd id="lbCat">—</dd></div>
+          <div class="lb-date"><dt>DATE</dt><dd>UNKNOWN</dd></div>
+          <div><dt>STATUS</dt><dd>COLLECTED</dd></div>
+        </dl>
+        <p class="lb-diamonds" aria-hidden="true">◇ ◇ ◇</p>
+        <p class="lb-quote">A fragment of endless crimson fantasy.</p>
+      </aside>
+    </div>
     <figcaption class="lb-cap">
       <span class="lb-idx" id="lbIdx">—</span>
       <span class="lb-sep" aria-hidden="true">·</span>
@@ -99,5 +213,12 @@
 </div>
 
 <script src="assets/app.js"></script>
+
+<!-- 分类抽屉：背景遮罩 / 面板 / 左侧把手（面板与把手在 inert 目标之外） -->
+<div class="td-backdrop" id="tdBackdrop" aria-hidden="true"></div>
+<aside class="td-panel" id="tdPanel"></aside>
+<button class="td-handle" id="tdHandle" type="button" disabled aria-label="向右拉出分类">
+  <b aria-hidden="true" data-td-arrow>›</b>分类索引<span aria-hidden="true">PULL</span>
+</button>
 </body>
 </html>

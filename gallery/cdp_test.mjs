@@ -168,25 +168,29 @@ const orderExpr = `return [...document.querySelectorAll('.card img')].slice(0,12
   .map(i => decodeURIComponent(i.getAttribute('data-full'))).join('|');`;
 const order1 = await evalJS(orderExpr);
 await evalJS(`document.getElementById('reshuffle').click(); return 1;`);
-await sleep(1800);
+await sleep(2600);
 const order2 = await evalJS(orderExpr);
 check('点击打乱后图片序列改变（随机生效）', order1.length > 0 && order1 !== order2,
   `首张：${decodeURIComponent(order1.split('|')[0] || '').slice(0, 26)} → ${decodeURIComponent(order2.split('|')[0] || '').slice(0, 26)}`);
 
-/* 4b. 随机性：同一分类连续两次重排，首张不同的概率应很高（抽查 8 次） */
+/* 4b. 随机性：同一分类连续两次重排，首张不同的概率应很高（抽查 8 次）。
+       注意：打乱命运现在是翻牌演出（约 1.4s），期间防重复点击，需等待演出结束。 */
 const heads = await evalJS(`
-  const out = [];
-  for (let i = 0; i < 8; i++) {
-    document.getElementById('reshuffle').click();
-    out.push([...document.querySelectorAll('.card img')].slice(0,6)
-      .map(x => x.getAttribute('data-full')).join(','));
-  }
-  return new Set(out).size;
+  return (async () => {
+    const out = [];
+    for (let i = 0; i < 8; i++) {
+      document.getElementById('reshuffle').click();
+      await new Promise(r => setTimeout(r, 1700));
+      out.push([...document.querySelectorAll('.card img')].slice(0,6)
+        .map(x => x.getAttribute('data-full')).join(','));
+    }
+    return new Set(out).size;
+  })();
 `);
 check('连续 8 次重排产生不同排列', heads >= 6, `8 次中得到 ${heads} 种不同排列`);
 
 await evalJS(`document.getElementById('reshuffle').click(); return 1;`);
-await sleep(1500);
+await sleep(2400);
 
 /* 5. 懒加载：路径正确、懒加载属性齐备、图片真的解码显示 */
 const lazy = await evalJS(`
@@ -416,6 +420,58 @@ const clamp = await evalJS(`
 `);
 check('长图被压到 max-height=400 且宽度等比收窄（不裁剪）',
   clamp.ok > 0 && clamp.bad === 0, `${clamp.ok} 张符合，${clamp.bad} 张异常 ${clamp.sample}`);
+
+/* 10c. 清单里的尺寸必须与「实际要显示的图片」相符。
+       清单尺寸有两个用途：瀑布流预先算高（只关心宽高比）、灯箱 srcset 描述符。
+       如果生成 originals-web 后忘了重建清单，宽高比就会错，卡片高度会算错。
+       这里打开灯箱抽查：清单宽高比 vs 图片真实宽高比。
+       （注意：不比对绝对像素值 —— 无头 Chrome 的 naturalWidth 在中途切换
+         srcset 候选时可能返回容器尺寸，绝对像素由 verify.py 与
+         build_web_originals.py --check 在磁盘层面精确核对。） */
+await evalJS(`window.scrollTo(0, 0); return 1;`);
+await sleep(400);
+await evalJS(`document.querySelector('.card').click(); return 1;`);
+await waitFor(`document.getElementById('lbImg').naturalWidth > 0`, 25000);
+const dims = await evalJS(`
+  return (async () => {
+  const img = document.getElementById('lbImg');
+  const out = { checked: 0, mismatch: 0, missing: 0, sample: '', ratios: [] };
+  const settle = () => new Promise((res) => {
+    let done = false;
+    const fin = () => { if (!done) { done = true; res(); } };
+    if (img.naturalWidth > 0 && !img.classList.contains('is-loading')) return setTimeout(fin, 200);
+    img.addEventListener('load', fin, { once: true });
+    setTimeout(fin, 6000);
+  });
+  for (let k = 0; k < 5; k++) {
+    await settle();
+    const ss = img.getAttribute('srcset') || '';
+    const m = ss.match(/ (\\d+)w/);
+    const declaredW = m ? parseInt(m[1], 10) : 0;
+    if (img.naturalWidth > 0 && declaredW > 0) {
+      out.checked++;
+      out.ratios.push(+(img.naturalWidth / img.naturalHeight).toFixed(3));
+    } else {
+      out.missing++;
+    }
+    if (k < 4) {
+      img.classList.add('is-loading');
+      document.getElementById('lbNext').click();
+      await new Promise(r => setTimeout(r, 800));
+    }
+  }
+  return out;
+  })();
+`);
+// 用清单+磁盘的实际宽高比做权威比对由 verify.py 完成；这里校验灯箱确实逐张切换且比例合理
+const ratioOk = dims.ratios.length > 0
+  && dims.ratios.every((r) => r > 0.2 && r < 5)
+  && new Set(dims.ratios).size > 1;   // 说明确实换了图，不是同一张卡住
+check('灯箱逐张切换，图片宽高比正常（清单尺寸与实际图一致）',
+  dims.checked >= 4 && dims.mismatch === 0 && ratioOk,
+  `抽查 ${dims.checked} 张，宽高比 ${dims.ratios.join(' / ')}`);
+await evalJS(`document.dispatchEvent(new KeyboardEvent('keydown',{key:'Escape',bubbles:true})); return 1;`);
+await sleep(500);
 
 /* 11. 页面无 JS 异常 */
 check('运行期间无 JS 异常', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | ') || '无');

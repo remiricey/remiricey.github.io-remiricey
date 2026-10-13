@@ -158,19 +158,90 @@ gallery 文件夹是「自包含」的：所有路径都是相对路径（./thum
 
 
 ----------------------------------------------------------------
-六、以后想增删图片
+六、以后想增删图片（日常更新流程）
 ----------------------------------------------------------------
 
-1. 把新图片放进 originals/<对应分类>/ 文件夹
+日常更新只有 4 条命令。所有脚本都「只处理新增或改动过的图」，
+已处理过的会自动跳过，所以第二次跑通常只要几秒。
 
-2. 依次执行（已存在的缩略图会自动跳过，不会重复处理）：
+【情况一】加几张新图（最常见）
 
-       python build_data.py
-       python build_thumbs.py
-       python build_thumbs_2x.py
-       python build_web_originals.py     # 保持上传版同步更新
+    1) 把新图片丢进原图目录，例如：
+           originals\Novel芙兰单人区\新图.png
 
-3. 用 GitHub Desktop 提交并推送，Pages 会自动更新
+    2) cd 到 gallery 目录，依次执行：
+
+           python build_data.py             # 更新图片清单
+           python build_thumbs.py           # 补 1x 缩略图
+           python build_thumbs_2x.py        # 补 2x 缩略图
+           python build_web_originals.py    # 补网页优化版（压画质）
+
+       第 4 条跑完会自动重新生成图片清单（这一步很关键，见下面的说明）。
+
+    3) 部署，完成。
+
+
+【情况二】删掉了图片，或替换了图片
+
+    删图后 thumbs 与 originals-web 里会留下对应的“孤儿文件”。
+    先体检看看差多少：
+
+           python build_web_originals.py --check
+
+    它会列出三类数量：已是最新 / 缺失或过期 / 输出里多余。
+    想彻底对齐就重建一份干净的输出：
+
+           python build_web_originals.py --clean
+           python build_thumbs.py
+           python build_thumbs_2x.py
+           python build_data.py
+
+    （--clean 只删重建 originals-web/，不会碰你的原图。）
+
+
+【为什么必须重跑 build_web_originals.py】
+
+    网页靠清单里的宽高提前算出每张卡片的高度，图片还没加载时布局
+    就已经排好了（所以滚动不会跳动）。originals-web 里的图被等比缩小过，
+    尺寸与原图不同；若压完图却忘了重建清单，网页拿到的还是旧尺寸，
+    宽高比就会算歪，卡片高度跟着错。
+    现在这一步已经自动化：build_web_originals.py 结束时会自动重建清单。
+
+
+【一次性搞定全部（复制粘贴即可）】
+
+    cd /d "你的路径\gallery"
+    python build_data.py && python build_thumbs.py && python build_thumbs_2x.py && python build_web_originals.py
+
+
+【原图放在哪里都能被找到】
+
+    三个脚本会自动探测原图目录，下面两种摆放都支持，不用改代码：
+
+        gallery\originals\<分类>\       （图集自带）
+        originals\<分类>\               （放在项目根目录，当前就是这个）
+
+    放在别处也行，用参数或环境变量指定：
+
+        python build_data.py D:\我的图集
+        set SMG_SOURCES=D:\我的图集
+
+    脚本第一行会打印它实际读取的目录，可据此确认找对了地方。
+
+
+【想改压缩参数】
+
+    编辑 build_web_originals.py 顶部两行：
+
+        WEB_MAX_SIDE = 1600     # 最长边像素（越大越清晰、体积越大）
+        QUALITY = 86            # WebP 画质 0-100
+
+    改完必须加 --clean 重新生成（否则已存在的图会被跳过）：
+
+        python build_web_originals.py --clean
+        node switch_originals.mjs originals-web
+
+    参考：1103 张、最长边 1600、画质 86 → 约 277 MB。
 
 
 ----------------------------------------------------------------

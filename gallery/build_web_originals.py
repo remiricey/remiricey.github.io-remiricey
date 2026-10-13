@@ -10,14 +10,21 @@
     而灯箱显示尺寸上限约 1900px，画质损失几乎看不出来。
 
 用法：
-    python build_web_originals.py             # 全量生成到 originals-web/
-    python build_web_originals.py --limit 30  # 先试做 30 张看看体积和效果
+    python build_web_originals.py                  # 全量生成 originals-web/
+    python build_web_originals.py --limit 30       # 先试做 30 张看体积
+    python build_web_originals.py --check          # 只体检：列出缺失/过期/多余的图，不生成
+    python build_web_originals.py --from 别的目录 --to 别的输出目录
 
-配合上传：
-    生成后把 index.html 里的 ORIGINALS_DIR 改成 'originals-web/'
-    （在 assets/app.js 顶部配置区，或见 README.txt 第三步）
+更新图片时的正确顺序（见 README.txt 第九节）：
+    1) 新图放进 originals/<分类>/
+    2) python build_data.py
+    3) python build_thumbs.py  &&  python build_thumbs_2x.py
+    4) python build_web_originals.py        # 只会处理新增/改动的图
+    5) node switch_originals.mjs originals-web
+    （本脚本结束时也会自动重新生成 data/gallery.json 与 data/manifest.json）
 """
 import argparse
+import json
 import os
 import shutil
 import sys
@@ -27,8 +34,7 @@ from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SOURCES = os.environ.get("SMG_SOURCES") or os.path.join(HERE, "originals")
-DEST = os.path.join(HERE, "originals-web")
+PARENT = os.path.dirname(HERE)
 
 CATEGORIES = [
     "Novel芙兰单人区",
@@ -42,6 +48,31 @@ EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".avif", ".jfif"}
 WEB_MAX_SIDE = 1600
 QUALITY = 86
 BG = (13, 10, 14)
+
+
+def find_default_source():
+    """自动找出原图目录，兼容两种常见摆放方式：
+         gallery/originals/     （图集自带）
+         ../originals/          （放在项目根目录，与 gallery 分开）
+    也支持环境变量 SMG_SOURCES 手动指定。"""
+    env = os.environ.get("SMG_SOURCES")
+    if env:
+        return env
+    for cand in (os.path.join(HERE, "originals"), os.path.join(PARENT, "originals")):
+        if not os.path.isdir(cand):
+            continue
+        for d in os.listdir(cand):
+            sub = os.path.join(cand, d)
+            if not os.path.isdir(sub):
+                continue
+            if any(os.path.splitext(n)[1].lower() in EXTS for n in os.listdir(sub)):
+                return cand
+    return os.path.join(HERE, "originals")
+
+
+DEFAULT_FROM = find_default_source()
+DEFAULT_TO = os.path.join(HERE, "originals-web")
+MANIFEST = os.path.join(HERE, "data", "manifest.json")
 
 
 def total_size_mb(path):
@@ -69,13 +100,67 @@ def convert(src, dst):
         im.save(dst, "WEBP", quality=QUALITY, method=5)
 
 
+def scan(src_dir, dst_dir):
+    """体检：返回 (待处理, 已最新, 输出里多余的) 三组文件名。"""
+    todo, fresh, orphans = [], [], []
+    for cat in CATEGORIES:
+        s = os.path.join(src_dir, cat)
+        d = os.path.join(dst_dir, cat)
+        want = set()
+        if os.path.isdir(s):
+            for name in sorted(os.listdir(s)):
+                if os.path.splitext(name)[1].lower() not in EXTS:
+                    continue
+                dst = os.path.join(d, os.path.splitext(name)[0] + ".webp")
+                want.add(os.path.basename(dst))
+                if os.path.exists(dst) and os.path.getmtime(dst) >= os.path.getmtime(os.path.join(s, name)):
+                    fresh.append(cat + "/" + name)
+                else:
+                    todo.append(cat + "/" + name)
+        if os.path.isdir(d):
+            for name in os.listdir(d):
+                if name not in want:
+                    orphans.append(cat + "/" + name)
+    return todo, fresh, orphans
+
+
+def write_manifest(originals_dir):
+    """记录当前使用的原图目录，并重新生成 data/gallery.json，
+    使清单里的尺寸与实际要显示的图片完全一致（灯箱 srcset 依赖它）。"""
+    os.makedirs(os.path.dirname(MANIFEST), exist_ok=True)
+    with open(MANIFEST, "w", encoding="utf-8") as fh:
+        json.dump({"originalsDir": originals_dir, "ext": ".webp",
+                   "maxSide": WEB_MAX_SIDE, "quality": QUALITY},
+                  fh, ensure_ascii=False, indent=2)
+
+    build_data = os.path.join(HERE, "build_data.py")
+    if not os.path.isfile(build_data):
+        return
+    print("-" * 56)
+    print("重新生成清单（尺寸取自 %s）…" % originals_dir)
+    import subprocess
+    rc = subprocess.call([sys.executable, build_data,
+                          os.path.join(HERE, originals_dir)])
+    if rc != 0:
+        print("!! 清单生成失败，请手动运行： python build_data.py %s" % originals_dir,
+              file=sys.stderr)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=0,
                     help="只处理每个分类的前 N 张，用于快速试算体积")
     ap.add_argument("--clean", action="store_true",
-                    help="先删除已有的 originals-web 目录再重建")
+                    help="先删除已有的输出目录再重建")
+    ap.add_argument("--from", dest="src", default=DEFAULT_FROM,
+                    help="原图目录（默认 originals/）")
+    ap.add_argument("--to", dest="dst", default=DEFAULT_TO,
+                    help="输出目录（默认 originals-web/）")
+    ap.add_argument("--check", action="store_true",
+                    help="只体检并列出缺失/过期/多余的图片，不做任何转换")
     args = ap.parse_args()
+
+    SOURCES, DEST = args.src, args.dst
 
     if args.clean and os.path.isdir(DEST):
         print("删除旧目录:", DEST)
@@ -85,7 +170,28 @@ def main():
         print("!! 找不到图片目录:", SOURCES, file=sys.stderr)
         return 1
 
-    print("图片目录:", SOURCES)
+    # ---------- 体检模式 ----------
+    if args.check:
+        todo, fresh, orphans = scan(SOURCES, DEST)
+        print("原图目录:", SOURCES)
+        print("输出目录:", DEST)
+        print("-" * 56)
+        print("已是最新 : %4d 张" % len(fresh))
+        print("缺失/过期: %4d 张" % len(todo))
+        print("输出里多余（原图已删）: %4d 个" % len(orphans))
+        for label, items in (("需处理", todo), ("多余", orphans)):
+            if items:
+                print("\n%s（最多列出 15 个）:" % label)
+                for it in items[:15]:
+                    print("   ", it)
+        if todo or orphans:
+            print("\n建议：在项目目录下运行  python build_web_originals.py"
+                  " --clean  重新生成一份干净的输出。")
+        else:
+            print("\n一切正常，无需处理。")
+        return 0
+
+    print("原图目录:", SOURCES)
     print("输出目录:", DEST)
     print("最长边 %dpx / WebP quality %d%s"
           % (WEB_MAX_SIDE, QUALITY, "  (试做每类 %d 张)" % args.limit if args.limit else ""))
@@ -120,11 +226,26 @@ def main():
     out = total_size_mb(DEST)
     print("-" * 56)
     print("转换 %d 张，失败 %d 张，耗时 %.0fs" % (done, failed, time.time() - t0))
-    print("originals  原始体积 : %7.1f MB" % total_size_mb(SOURCES))
-    print("originals-web 优化后 : %7.1f MB" % out)
+    print("原图体积            : %7.1f MB  (%s)" % (total_size_mb(SOURCES), SOURCES))
+    print("网页优化版体积      : %7.1f MB  (%s)" % (out, DEST))
+
+    # 原图被删掉时，输出目录里会留下多余的图，顺手提示
+    _, _, orphans = scan(SOURCES, DEST)
+    if orphans:
+        print()
+        print("注意：输出目录里有 %d 个文件在原图目录中已不存在。" % len(orphans))
+        print("      如想让两边完全一致，运行： python build_web_originals.py --clean")
+
+    if failed:
+        print()
+        print("有 %d 张转换失败，请检查上面的错误信息。" % failed, file=sys.stderr)
+
+    # 关键：清单里的尺寸必须取自「实际显示的图片」，否则灯箱 srcset 会选错
+    rel = os.path.relpath(DEST, HERE).replace("\\", "/") + "/"
+    write_manifest(rel)
+
     if args.limit:
-        print("（这是 --limit 试做结果，全量体积约为它的 %.0f 倍）"
-              % (1103 / max(1, args.limit * 5)))
+        print("（这是 --limit 试做结果，不是完整清单）")
     print()
     print("下一步（二选一）：")
     print("  A) 运行  node switch_originals.mjs originals-web   自动切换配置")

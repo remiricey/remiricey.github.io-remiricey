@@ -1,6 +1,13 @@
-# 原图目录：体积过大（约 2.5 GB），不适合上传到 GitHub
+# 原图目录：体积过大（约 2.5 GB），不适合上传 GitHub / 打包进站点
 # 网页浏览只需要 thumbs/（缩略图）与 originals-web/（网页优化版原图）
+# 原图放在项目根目录（../originals）时，下面一行同样能命中
 originals/
+../originals/
+
+# 部署工具的本地缓存
+.wrangler/
+.vercel/
+.netlify/
 
 # 系统与编辑器产生的临时文件
 Thumbs.db

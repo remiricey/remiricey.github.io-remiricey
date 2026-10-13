@@ -5,7 +5,10 @@
 - RGBA / P 模式先合成到暗色背景（与页面底色一致），避免透明区域变成白块
 - 已存在且比原图新的缩略图会跳过，支持断点续跑
 
-图片源目录默认 gallery/originals/<分类名>/，可用环境变量覆盖：
+图片源目录自动探测，兼容两种摆放方式：
+    gallery/originals/      （图集自带）
+    ../originals/           （放在项目根目录，与 gallery 分开）
+也可用环境变量覆盖：
     set SMG_SOURCES=D:\\我的图集
 """
 import os
@@ -16,7 +19,7 @@ from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SOURCES = os.environ.get("SMG_SOURCES") or os.path.join(HERE, "originals")
+PARENT = os.path.dirname(HERE)
 THUMBS = os.path.join(HERE, "thumbs")
 
 CATEGORIES = [
@@ -28,6 +31,26 @@ CATEGORIES = [
 ]
 
 EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".avif", ".jfif"}
+
+
+def find_source_dir():
+    """找出原图目录。优先选带「原始扩展名」的那一份，
+    这样缩略图文件名才能和清单里的文件名对上。"""
+    env = os.environ.get("SMG_SOURCES")
+    if env:
+        return env
+    for cand in (os.path.join(HERE, "originals"), os.path.join(PARENT, "originals")):
+        if not os.path.isdir(cand):
+            continue
+        for d in os.listdir(cand):
+            sub = os.path.join(cand, d)
+            if os.path.isdir(sub) and any(
+                    os.path.splitext(n)[1].lower() in EXTS for n in os.listdir(sub)):
+                return cand
+    return os.path.join(HERE, "originals")
+
+
+SOURCES = find_source_dir()
 MAX_SIDE = 520          # 缩略图最长边像素
 QUALITY = 82
 BG = (13, 10, 14)       # 暗黑哥特底色，用于 alpha 合成

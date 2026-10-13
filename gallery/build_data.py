@@ -1,11 +1,19 @@
 # -*- coding: utf-8 -*-
 """
-扫描 originals/ 下的五个分类文件夹，提取所有图片的路径与原始尺寸，
-生成 data/gallery.json（纯相对路径，方便整包上传发布）。
+扫描图片目录，提取所有图片的文件名与「实际显示尺寸」，生成 data/gallery.json
+（纯相对路径，方便整包上传发布）。
 
-图片目录默认取 gallery/originals/<分类名>/。
-若图片放在别处，可用环境变量指定：
-    set SMG_SOURCES=D:\\我的图集
+为什么尺寸要和实际显示的图一致：
+    瀑布流靠清单里的宽高提前算好每张卡片的高度，避免滚动时跳动；
+    灯箱的 srcset 也用它作为宽度描述符。
+    所以生成 originals-web/ 之后必须重新跑一次本脚本，
+    否则清单里还是原图尺寸，高清屏会按错误宽度选图。
+
+读取哪个目录（优先级从高到低）：
+    1) 命令行参数       python build_data.py originals-web
+    2) 环境变量         set SMG_SOURCES=D:\\我的图集
+    3) data/manifest.json 里记录的目录（生成网页优化图时会自动写入）
+    4) 默认             gallery/originals/
 """
 import json
 import os
@@ -15,9 +23,10 @@ from PIL import Image
 Image.MAX_IMAGE_PIXELS = None
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-# 图片目录：默认 gallery/originals（相对本脚本所在的 gallery 目录）
-SOURCES = os.environ.get("SMG_SOURCES") or os.path.join(HERE, "originals")
+PARENT = os.path.dirname(HERE)
 OUT = os.path.join(HERE, "data", "gallery.json")
+MANIFEST = os.path.join(HERE, "data", "manifest.json")
+DEFAULT_SOURCE_DIR = "originals"
 
 # 固定顺序：顶层导航必须按此顺序
 CATEGORIES = [
@@ -31,8 +40,54 @@ CATEGORIES = [
 EXTS = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp", ".avif", ".jfif"}
 
 
+def _dir_has_images(path):
+    if not os.path.isdir(path):
+        return False
+    for d in os.listdir(path):
+        sub = os.path.join(path, d)
+        if not os.path.isdir(sub):
+            continue
+        if any(os.path.splitext(n)[1].lower() in EXTS for n in os.listdir(sub)):
+            return True
+    return False
+
+
+def detect_source_dir():
+    """决定读取哪一份图片，用来生成清单。
+
+    优先级：
+      1) 命令行参数       python build_data.py originals-web
+      2) 环境变量         set SMG_SOURCES=D:\\我的图集
+      3) data/manifest.json 里记录的目录（生成网页优化图时自动写入，
+                            保证清单尺寸与实际上传的图一致）
+      4) gallery/originals/ 或 ../originals/（自动探测）
+    """
+    if len(sys.argv) > 1 and not sys.argv[1].startswith("-"):
+        return sys.argv[1]
+    env = os.environ.get("SMG_SOURCES")
+    if env:
+        return env
+    if os.path.isfile(MANIFEST):
+        try:
+            with open(MANIFEST, encoding="utf-8") as fh:
+                d = (json.load(fh).get("originalsDir") or "").strip("./").rstrip("/")
+            if d and _dir_has_images(os.path.join(HERE, d)):
+                return os.path.join(HERE, d)
+        except Exception:
+            pass
+    for cand in (os.path.join(HERE, DEFAULT_SOURCE_DIR),
+                 os.path.join(PARENT, DEFAULT_SOURCE_DIR)):
+        if _dir_has_images(cand):
+            return cand
+    return os.path.join(HERE, DEFAULT_SOURCE_DIR)
+
+
+SOURCES = detect_source_dir()
+
+
 def main():
     print("图片目录:", SOURCES)
+    print("清单输出:", OUT)
     categories = []
     total = 0
     for cat in CATEGORIES:
